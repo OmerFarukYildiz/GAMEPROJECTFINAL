@@ -13,7 +13,7 @@ public class BossController : MonoBehaviour
     public Transform firePoint;           // Merminin çıktığı nokta
 
     [Header("Can Ayarları")]
-    public int maxHealth = 20;
+    public int maxHealth = 50;
     private int currentHealth;
 
     [Header("Faz 1 Ayarları")]
@@ -23,14 +23,22 @@ public class BossController : MonoBehaviour
     [Header("Faz 2 Ayarları")]
     public float phase2Speed = 6f;
     public float phase2ShootInterval = 1.5f;
-    public int phase2Threshold = 10;      // Bu cana düşünce Faz 2'ye geçer
+    public int phase2Threshold = 25;      // Bu cana düşünce Faz 2'ye geçer
 
     [Header("Ground Slam")]
     public float groundSlamForce = 18f;
     public float groundSlamCooldown = 5f;
+    public int groundSlamDamage = 6;
 
-    [Header("Ödül")]
+    [Header("Ödül & Geçiş")]
     public GameObject colorCrystalPrefab; // Kristal prefabı
+    public GameObject wallToDestroy;      // Boss ölünce yok olacak duvar
+    public GameObject portalToEnable;     // Boss ölünce açılacak kapı
+
+    [Header("Arena Sınırları (Opsiyonel)")]
+    public bool useArenaLimits = false;
+    public float minX;
+    public float maxX;
 
     private Rigidbody2D rb;
     private SpriteRenderer sr;
@@ -44,12 +52,18 @@ public class BossController : MonoBehaviour
 
     public LayerMask groundLayer;
     public Transform groundCheck;
+    private Vector3 startPosition;
+    private Color originalColor;
+    private Coroutine resetCoroutine;
+    private bool isPlayerOutside = false;
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         sr = GetComponent<SpriteRenderer>();
         currentHealth = maxHealth;
+        startPosition = transform.position;
+        originalColor = sr.color; // Orijinal rengi kaydet
 
         if (player == null)
         {
@@ -62,9 +76,10 @@ public class BossController : MonoBehaviour
     {
         if (!bossActivated || currentState == BossState.Death) return;
 
+        // isGrounded artık OnCollisionStay2D ile daha güvenilir bir şekilde kontrol edilecek (Eğer manuel ayar yapılmadıysa)
         if (groundCheck != null)
         {
-            isGrounded = Physics2D.OverlapCircle(groundCheck.position, 0.3f, groundLayer);
+            isGrounded = Physics2D.OverlapCircle(groundCheck.position, 0.5f, groundLayer);
         }
 
         // Timers
@@ -90,6 +105,14 @@ public class BossController : MonoBehaviour
         
         // Fizik hareketini burada uygula (titremeyi önler)
         rb.linearVelocity = new Vector2(moveDirection * currentSpeed, rb.linearVelocity.y);
+
+        // Eğer arena sınırları aktifse, boss'un pozisyonunu sınırla
+        if (useArenaLimits)
+        {
+            Vector3 clampedPosition = transform.position;
+            clampedPosition.x = Mathf.Clamp(clampedPosition.x, minX, maxX);
+            transform.position = clampedPosition;
+        }
     }
 
     // ── FAZ 1: Normal Davranış ────────────────────────────────
@@ -119,20 +142,75 @@ public class BossController : MonoBehaviour
             shootTimer = 0f;
         }
 
-        // Ground Slam
-        if (groundSlamTimer >= groundSlamCooldown && isGrounded && !isSlamming)
+        // Ground Slam (isGrounded zorunluluğunu esnettik veya güvenli hale getirdik)
+        if (groundSlamTimer >= groundSlamCooldown && !isSlamming)
         {
-            StartCoroutine(GroundSlam());
-            groundSlamTimer = 0f;
+            // Eğer isGrounded bir şekilde buga girdiyse bile boss'un zıplamasını sağlamak için ekstra güvenlik
+            if (isGrounded || rb.linearVelocity.y == 0)
+            {
+                StartCoroutine(GroundSlam());
+                groundSlamTimer = 0f;
+            }
         }
     }
 
     // ── HAREKET HESAPLAMA ─────────────────────────────────────
     void CalculateMovement(float speed)
     {
-        moveDirection = (player.position.x > transform.position.x) ? 1f : -1f;
+        float targetX;
+        
+        if (isPlayerOutside)
+        {
+            // Oyuncu arenadan çıktıysa başladığı noktaya (odanın ortasına) dön
+            targetX = startPosition.x;
+        }
+        else
+        {
+            // Oyuncu arenadaysa onu takip et
+            targetX = player.position.x;
+        }
+
+        float distanceX = targetX - transform.position.x;
+        
+        // Tolerans: Dışarıdaysa tam noktaya gitsin (0.5), oyuncuyu kovalıyorsa biraz uzakta dursun (2.5) ki kapıya sıkışmasın
+        float stopDistance = isPlayerOutside ? 0.5f : 2.5f;
+
+        if (Mathf.Abs(distanceX) < stopDistance)
+        {
+            moveDirection = 0f;
+        }
+        else
+        {
+            moveDirection = Mathf.Sign(distanceX); // 1 veya -1
+        }
+
         currentSpeed = speed;
-        sr.flipX = (moveDirection < 0);
+
+        // Yönümüz varsa (ve oyuncuyu kovalıyorsak) ateş edeceğimiz tarafı ayarla
+        if (moveDirection != 0f && !isPlayerOutside)
+        {
+            sr.flipX = (moveDirection < 0);
+            
+            if (firePoint != null)
+            {
+                Vector3 fpLocalPos = firePoint.localPosition;
+                fpLocalPos.x = Mathf.Abs(fpLocalPos.x) * (sr.flipX ? -1f : 1f);
+                firePoint.localPosition = fpLocalPos;
+            }
+        }
+        else if (!isPlayerOutside)
+        {
+            // Eğer duruyorsak (oyuncuya yeterince yakınsak) yine oyuncuya doğru dönük kalalım
+            float lookDist = player.position.x - transform.position.x;
+            sr.flipX = (lookDist < 0);
+            
+            if (firePoint != null)
+            {
+                Vector3 fpLocalPos = firePoint.localPosition;
+                fpLocalPos.x = Mathf.Abs(fpLocalPos.x) * (sr.flipX ? -1f : 1f);
+                firePoint.localPosition = fpLocalPos;
+            }
+        }
     }
 
     // ── ATEŞ ─────────────────────────────────────────────────
@@ -157,16 +235,18 @@ public class BossController : MonoBehaviour
     IEnumerator GroundSlam()
     {
         isSlamming = true;
-        // Önce zıpla
+        // Önce zıpla (Yukarı daha fazla güç verelim)
         rb.linearVelocity = new Vector2(0f, groundSlamForce);
 
         // Havaya çıkmasını bekle
-        yield return new WaitForSeconds(0.5f);
+        yield return new WaitForSeconds(0.6f);
 
-        // Hızla aşağı düş
-        while (!isGrounded)
+        // Hızla aşağı düş (Eğer isGrounded tetiklenmezse diye süre sınırı ekledik)
+        float fallTimer = 0f;
+        while (!isGrounded && fallTimer < 1.5f)
         {
-            rb.linearVelocity = new Vector2(0f, -groundSlamForce);
+            rb.linearVelocity = new Vector2(0f, -groundSlamForce * 1.5f);
+            fallTimer += Time.deltaTime;
             yield return null;
         }
 
@@ -176,7 +256,7 @@ public class BossController : MonoBehaviour
         {
             if (hit.CompareTag("Player"))
             {
-                hit.GetComponent<PlayerHealth>()?.TakeDamage(2);
+                hit.GetComponent<PlayerHealth>()?.TakeDamage(groundSlamDamage);
 
                 // Knockback
                 Rigidbody2D prb = hit.GetComponent<Rigidbody2D>();
@@ -186,6 +266,12 @@ public class BossController : MonoBehaviour
                     prb.AddForce(dir * 10f, ForceMode2D.Impulse);
                 }
             }
+        }
+
+        // Kamera Sarsıntısı (Vuruş hissi)
+        if (CameraShake.Instance != null)
+        {
+            CameraShake.Instance.Shake(0.3f, 0.4f);
         }
 
         Debug.Log("GROUND SLAM!");
@@ -257,12 +343,57 @@ public class BossController : MonoBehaviour
             Instantiate(colorCrystalPrefab, transform.position + Vector3.up, Quaternion.identity);
         }
 
+        // Duvarı kaldır ve portalı aç
+        if (wallToDestroy != null) wallToDestroy.SetActive(false);
+        if (portalToEnable != null) portalToEnable.SetActive(true);
+
         Destroy(gameObject);
+    }
+
+    // ── SIFIRLAMA (ARENADAN ÇIKINCA) ────────────────────────
+    public void StartResetTimer()
+    {
+        isPlayerOutside = true;
+        if (resetCoroutine != null) StopCoroutine(resetCoroutine);
+        resetCoroutine = StartCoroutine(ResetTimerRoutine());
+    }
+
+    private IEnumerator ResetTimerRoutine()
+    {
+        Debug.Log("Oyuncu odadan çıktı. Boss 10 saniye içinde sıfırlanacak...");
+        yield return new WaitForSeconds(10f);
+        ResetBoss();
+    }
+
+    public void CancelResetTimer()
+    {
+        isPlayerOutside = false;
+        if (resetCoroutine != null)
+        {
+            StopCoroutine(resetCoroutine);
+            resetCoroutine = null;
+            Debug.Log("Oyuncu odaya geri döndü, boss sıfırlaması iptal edildi.");
+        }
+    }
+
+    public void ResetBoss()
+    {
+        isPlayerOutside = false;
+        bossActivated = false;
+        currentState = BossState.Idle;
+        currentHealth = maxHealth;
+        transform.position = startPosition;
+        sr.color = originalColor; // Başlangıç rengine dön
+        isSlamming = false;
+        rb.linearVelocity = Vector2.zero;
+        Debug.Log("Boss tamamen sıfırlandı!");
     }
 
     // ── AKTİFLEŞTİRME ────────────────────────────────────────
     public void ActivateBoss()
     {
+        if (bossActivated) return; // Zaten aktifse fazı sıfırlama
+
         bossActivated = true;
         currentState = BossState.Phase1;
         Debug.Log("Boss savaşı başladı!");
@@ -276,4 +407,29 @@ public class BossController : MonoBehaviour
 
     // ── UI İÇİN GETTER ──────────────────────────────────────────
     public int GetCurrentHealth() => currentHealth;
+
+    // Boss'un isGrounded durumunu garanti altına almak için çarpışma kontrolü
+    private void OnCollisionStay2D(Collision2D collision)
+    {
+        // Temas edilen obje groundLayer içinde mi kontrol et
+        if (((1 << collision.gameObject.layer) & groundLayer) != 0)
+        {
+            foreach (ContactPoint2D contact in collision.contacts)
+            {
+                if (contact.normal.y > 0.5f) // Üstüne bastığı bir şey
+                {
+                    isGrounded = true;
+                    return;
+                }
+            }
+        }
+    }
+
+    private void OnCollisionExit2D(Collision2D collision)
+    {
+        if (((1 << collision.gameObject.layer) & groundLayer) != 0)
+        {
+            isGrounded = false;
+        }
+    }
 }

@@ -3,7 +3,7 @@ using UnityEngine;
 public class EnemyHealth : MonoBehaviour
 {
     [Header("Can Ayarları")]
-    public int maxHealth = 6;
+    public int maxHealth = 10;
     private int currentHealth;
     
     private SpriteRenderer sr;

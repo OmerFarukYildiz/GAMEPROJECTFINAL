@@ -4,7 +4,7 @@ public class PlayerAttack : MonoBehaviour
 {
     [Header("Saldırı Ayarları")]
     public float attackRange = 2.5f;   // Vuruş menzili
-    public int attackDamage = 5;       // Vuruş hasarı (Boss 20 can, 4 vuruşta ölür)
+    public int attackDamage = 2;       // Vuruş hasarı
     public KeyCode attackKey = KeyCode.F; // Vurma tuşu (F)
     
     void Update()
@@ -33,12 +33,11 @@ public class PlayerAttack : MonoBehaviour
                 hitSomething = true;
             }
 
-            // Eğer objenin üzerinde EnemyHealth varsa (Tag'e gerek kalmadan bulur)
+            // Eğer objenin üzerinde EnemyHealth varsa
             EnemyHealth enemy = hit.GetComponent<EnemyHealth>();
             if (enemy != null)
             {
-                // Küçük düşmanlara 5 vurursak tek yerler, o yüzden onlara 2 veya 3 vuralım
-                enemy.TakeDamage(2); 
+                enemy.TakeDamage(attackDamage); 
                 hitSomething = true;
             }
         }

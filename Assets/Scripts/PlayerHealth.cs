@@ -3,7 +3,7 @@ using UnityEngine;
 public class PlayerHealth : MonoBehaviour
 {
     [Header("Can Ayarları")]
-    public int maxHealth = 5;
+    public int maxHealth = 20;
     public float invincibilityDuration = 1.5f; // Hasar sonrası dokunulmazlık süresi
 
     private int currentHealth;
@@ -53,10 +53,20 @@ public class PlayerHealth : MonoBehaviour
     void Die()
     {
         Debug.Log("Oyuncu öldü! Game Over.");
-        // Faz 6'da UI ekleyeceğiz, şimdilik sahnesi yenile
-        UnityEngine.SceneManagement.SceneManager.LoadScene(
-            UnityEngine.SceneManagement.SceneManager.GetActiveScene().name
-        );
+
+        // Öldüğünde ana menüye dön
+        string targetScene = "MainMenu";
+
+        // Eğer SceneTransition (Karartma ekranı) varsa yumuşak bir şekilde menüye dön
+        if (SceneTransition.Instance != null)
+        {
+            SceneTransition.Instance.LoadScene(targetScene);
+        }
+        else
+        {
+            // Yoksa anında geç
+            UnityEngine.SceneManagement.SceneManager.LoadScene(targetScene);
+        }
     }
 
     public int GetCurrentHealth() => currentHealth;

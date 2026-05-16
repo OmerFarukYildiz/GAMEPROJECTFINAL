@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class Projectile : MonoBehaviour
 {
-    public int damage = 1;
+    public int damage = 2;
     public float lifetime = 4f; // 4 saniye sonra yok olur
 
     void Start()
@@ -12,15 +12,23 @@ public class Projectile : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
+        // Eğer çarptığımız şey fiziksel bir duvar değil de sadece bir alan (Trigger) ise yok olma!
+        if (other.isTrigger) return;
+
         if (other.CompareTag("Player"))
         {
             other.GetComponent<PlayerHealth>()?.TakeDamage(damage);
             Destroy(gameObject);
         }
-        else if (other.gameObject.tag != "Enemy" && other.gameObject.tag != "Boss")
+        else
         {
-            // Duvara veya zemine çarptı
-            Destroy(gameObject);
+            // Çarptığı şey Player değilse, Boss olup olmadığına bak.
+            // Boss değilse (yani duvar, zemin vs. ise) mermiyi yok et.
+            BossController boss = other.GetComponent<BossController>();
+            if (boss == null)
+            {
+                Destroy(gameObject);
+            }
         }
     }
 }
