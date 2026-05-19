@@ -50,8 +50,8 @@ public class FastTravelUI : MonoBehaviour
         {
             foreach(var bonfire in GameManager.Instance.unlockedBonfires)
             {
-                // Mevcut sahnede aynı bonfire'ı göstermeyebiliriz ama göstermek de sorun olmaz.
-                string btnText = bonfire.sceneName + " -> " + bonfire.bonfireID;
+                // Sadece Bonfire adını (ID) ekranda gösteriyoruz
+                string btnText = bonfire.bonfireID;
                 CreateButton(btnText, () => FastTravelTo(bonfire));
             }
         }
