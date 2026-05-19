@@ -7,11 +7,14 @@ public class EnemyHealth : MonoBehaviour
     private int currentHealth;
     
     private SpriteRenderer sr;
+    private Color originalColor;
+    private Coroutine flashCoroutine;
 
     void Start()
     {
         currentHealth = maxHealth;
         sr = GetComponent<SpriteRenderer>();
+        if (sr != null) originalColor = sr.color;
     }
 
     public void TakeDamage(int damage)
@@ -20,7 +23,8 @@ public class EnemyHealth : MonoBehaviour
         Debug.Log($"Düşman hasar aldı! Kalan can: {currentHealth}");
 
         // Vurulma efekti
-        StartCoroutine(FlashWhite());
+        if (flashCoroutine != null) StopCoroutine(flashCoroutine);
+        flashCoroutine = StartCoroutine(FlashWhite());
 
         if (currentHealth <= 0)
         {
@@ -32,7 +36,6 @@ public class EnemyHealth : MonoBehaviour
     {
         if (sr != null)
         {
-            Color originalColor = sr.color;
             sr.color = Color.white; // Vurulunca bembeyaz parlasın
             yield return new WaitForSeconds(0.15f);
             sr.color = originalColor; // Sonra rengi normale dönsün

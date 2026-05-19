@@ -10,6 +10,64 @@ public class GameManager : MonoBehaviour
     public int playerHealth = 5;
     public int currentLevel = 1;
 
+    [Header("Bonfire & Fast Travel")]
+    public string lastBonfireID = "";
+    public string lastBonfireScene = "";
+    public Vector3 lastBonfirePosition;
+    
+    [System.Serializable]
+    public class BonfireData
+    {
+        public string bonfireID;
+        public string sceneName;
+        public Vector3 spawnPosition;
+    }
+    
+    public System.Collections.Generic.List<BonfireData> unlockedBonfires = new System.Collections.Generic.List<BonfireData>();
+
+    [Header("Kalıcı Kayıt (Dünya Sıfırlanınca Kalanlar)")]
+    public System.Collections.Generic.List<string> deadBosses = new System.Collections.Generic.List<string>();
+    public System.Collections.Generic.List<string> collectedCrystalsList = new System.Collections.Generic.List<string>();
+
+    // ── KALICI KAYIT FONKSİYONLARI ────────────────────────────
+    public void RegisterDeadBoss(string bossID)
+    {
+        if (!string.IsNullOrEmpty(bossID) && !deadBosses.Contains(bossID)) deadBosses.Add(bossID);
+    }
+
+    public bool IsBossDead(string bossID)
+    {
+        return deadBosses.Contains(bossID);
+    }
+
+    public void RegisterCollectedCrystal(string crystalID)
+    {
+        if (!string.IsNullOrEmpty(crystalID) && !collectedCrystalsList.Contains(crystalID)) collectedCrystalsList.Add(crystalID);
+    }
+
+    public bool IsCrystalCollected(string crystalID)
+    {
+        return collectedCrystalsList.Contains(crystalID);
+    }
+
+    // ── BONFIRE FONKSİYONLARI ─────────────────────────────────
+    public void UnlockBonfire(string id, string scene, Vector3 pos)
+    {
+        if (!unlockedBonfires.Exists(b => b.bonfireID == id))
+        {
+            unlockedBonfires.Add(new BonfireData { bonfireID = id, sceneName = scene, spawnPosition = pos });
+            Debug.Log("Yeni Bonfire açıldı: " + id);
+        }
+    }
+
+    public void SetLastBonfire(string id, string scene, Vector3 pos)
+    {
+        lastBonfireID = id;
+        lastBonfireScene = scene;
+        lastBonfirePosition = pos;
+        Debug.Log("Kayıt noktası güncellendi: " + id);
+    }
+
     void Awake()
     {
         // Singleton kontrolü
@@ -47,6 +105,11 @@ public class GameManager : MonoBehaviour
         collectedCrystals = 0;
         playerHealth = 5;
         currentLevel = 1;
+        unlockedBonfires.Clear();
+        deadBosses.Clear();
+        collectedCrystalsList.Clear();
+        lastBonfireID = "";
+        lastBonfireScene = "";
         PlayerPrefs.DeleteAll();
     }
 }

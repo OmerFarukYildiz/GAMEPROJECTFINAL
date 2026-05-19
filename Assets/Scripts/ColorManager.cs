@@ -8,8 +8,8 @@ public class ColorManager : MonoBehaviour
     // ── SİNGLETON PATTERN ──────────────────────────────────────
     public static ColorManager Instance { get; private set; }
 
-    [Header("Ayarlar")]
-    public int totalCrystals = 5;          // Toplam kristal sayısı
+    [Header("Ayarlar (Bu Sahnenin Rengi İçin)")]
+    public System.Collections.Generic.List<string> requiredCrystalIDs = new System.Collections.Generic.List<string>() { "Crystal_1" };
     public float transitionDuration = 2f;  // Renk geçiş süresi
 
     [Header("Post-Processing")]
@@ -37,33 +37,63 @@ public class ColorManager : MonoBehaviour
             globalVolume.profile.TryGet<ColorAdjustments>(out colorAdjustments);
         }
 
-        // Başlangıçta tam siyah-beyaz
+        // Başlangıç rengini ayarla (Toplanan kristale göre)
         if (colorAdjustments != null)
         {
-            colorAdjustments.saturation.value = -100f;
+            int collectedCount = GetCollectedCount();
+            float startSaturation = -100f;
+            
+            if (requiredCrystalIDs.Count > 0)
+            {
+                startSaturation = Mathf.Lerp(-100f, 0f, (float)collectedCount / requiredCrystalIDs.Count);
+            }
+            
+            colorAdjustments.saturation.value = startSaturation;
         }
     }
 
-    // ── KRİSTAL TOPLANDI ─────────────────────────────────────
-    public void CrystalCollected()
+    private int GetCollectedCount()
     {
-        collectedCrystals++;
-        collectedCrystals = Mathf.Clamp(collectedCrystals, 0, totalCrystals);
+        int count = 0;
+        if (GameManager.Instance != null)
+        {
+            foreach (string id in requiredCrystalIDs)
+            {
+                if (GameManager.Instance.IsCrystalCollected(id)) count++;
+            }
+        }
+        return count;
+    }
 
-        // Hedef doygunluk değerini hesapla
-        // 0 kristal = -100 (tam siyah-beyaz)
-        // totalCrystals kristal = 0 (tam renkli)
-        float targetSaturation = Mathf.Lerp(-100f, 0f, (float)collectedCrystals / totalCrystals);
+    // ── KRİSTAL TOPLANDI ─────────────────────────────────────
+    public void CrystalCollected(string crystalID)
+    {
+        if (requiredCrystalIDs.Contains(crystalID) || requiredCrystalIDs.Count == 0)
+        {
+            int collectedCount = GetCollectedCount();
+            if (GameManager.Instance != null && !GameManager.Instance.IsCrystalCollected(crystalID))
+            {
+                collectedCount++; 
+            }
+            
+            collectedCount = Mathf.Min(collectedCount, requiredCrystalIDs.Count);
 
-        // Smooth geçiş başlat
-        StopAllCoroutines();
-        StartCoroutine(TransitionColor(targetSaturation));
+            float targetSaturation = -100f;
+            if (requiredCrystalIDs.Count > 0)
+            {
+                targetSaturation = Mathf.Lerp(-100f, 0f, (float)collectedCount / requiredCrystalIDs.Count);
+            }
 
-        Debug.Log($"Kristal toplandı! {collectedCrystals}/{totalCrystals}");
+            // Smooth geçiş başlat
+            StopAllCoroutines();
+            StartCoroutine(TransitionColor(targetSaturation, collectedCount >= requiredCrystalIDs.Count));
+
+            Debug.Log($"Kristal toplandı! Sahne Rengi Açılıyor: {collectedCount}/{requiredCrystalIDs.Count}");
+        }
     }
 
     // ── SMOOTH RENK GEÇİŞİ ──────────────────────────────────
-    IEnumerator TransitionColor(float targetSaturation)
+    IEnumerator TransitionColor(float targetSaturation, bool allCollected)
     {
         if (colorAdjustments == null) yield break;
 
@@ -85,7 +115,7 @@ public class ColorManager : MonoBehaviour
         colorAdjustments.saturation.value = targetSaturation;
 
         // Tüm kristaller toplandıysa
-        if (collectedCrystals >= totalCrystals)
+        if (allCollected && requiredCrystalIDs.Count > 0)
         {
             OnAllCrystalsCollected();
         }
@@ -107,7 +137,7 @@ public class ColorManager : MonoBehaviour
         // Faz 7'de buraya level geçişi ekleyeceğiz
     }
 
-    // ── UI İÇİN GETTER ───────────────────────────────────────
-    public int GetCollectedCrystals() => collectedCrystals;
-    public int GetTotalCrystals() => totalCrystals;
+    // ── UI İÇİN GETTER (Opsiyonel) ───────────────────────────
+    public int GetCollectedCrystals() => GetCollectedCount();
+    public int GetTotalCrystals() => requiredCrystalIDs.Count;
 }

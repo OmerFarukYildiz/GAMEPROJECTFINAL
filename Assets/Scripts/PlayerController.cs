@@ -34,12 +34,35 @@ public class PlayerController : MonoBehaviour
     private float dashCooldownTimer;
     private float originalGravity;
 
+    [Header("Duvar Mekaniği (Wall Jump & Cling)")]
+    public LayerMask wallLayer;             // Hangi duvarlara tırmanılabilir (ClimbableWall layerı)
+    public float wallCheckDistance = 0.5f;  // Duvarı ne kadar ileriden kontrol edecek
+    public float wallCheckRadius = 0.2f;    // Duvar kontrol dairesi yarıçapı
+    public float wallSlideSpeed = 2f;       // Tutunduktan sonraki kısa kayma hızı
+    public float wallSlideDuration = 0.15f; // Ne kadar süre kayıp duracağı
+    public KeyCode wallClingKey = KeyCode.Mouse0; // Tutunma tuşu (Sol Tık)
+
+    private bool isTouchingWall;
+    private bool isWallClinging;
+    private float wallSlideTimer;
+    private int wallDirection;
+
     void Start()
     {
         // Bileşenleri al
         rb = GetComponent<Rigidbody2D>();
         sr = GetComponent<SpriteRenderer>();
         originalGravity = rb.gravityScale; // Fiziği bozmamak için orijinal yerçekimini kaydet
+        
+        // Duvara doğru koşarken sürtünmeden dolayı havada asılı kalmayı (takılmayı) engellemek için:
+        Collider2D coll = GetComponent<Collider2D>();
+        if (coll != null && coll.sharedMaterial == null)
+        {
+            PhysicsMaterial2D noFrictionMat = new PhysicsMaterial2D("NoFriction");
+            noFrictionMat.friction = 0f;
+            noFrictionMat.bounciness = 0f;
+            coll.sharedMaterial = noFrictionMat;
+        }
     }
 
     void Update()
@@ -52,6 +75,58 @@ public class PlayerController : MonoBehaviour
 
         // Zemin kontrolü
         isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
+
+        // Duvar kontrolü (baktığı yöne göre)
+        wallDirection = sr.flipX ? -1 : 1;
+        Vector2 wallCheckPos = (Vector2)transform.position + new Vector2(wallDirection * wallCheckDistance, 0f);
+        isTouchingWall = Physics2D.OverlapCircle(wallCheckPos, wallCheckRadius, wallLayer);
+
+        // Duvara Tutunma Başlangıcı
+        if (!isGrounded && isTouchingWall && Input.GetKeyDown(wallClingKey))
+        {
+            isWallClinging = true;
+            wallSlideTimer = wallSlideDuration;
+        }
+
+        // Duvardan kopma (Yere değdiğinde veya duvardan uzaklaştığında)
+        if (isGrounded || (isWallClinging && !isTouchingWall))
+        {
+            isWallClinging = false;
+            rb.gravityScale = originalGravity;
+        }
+
+        if (isWallClinging)
+        {
+            // Duvarda Zıplama
+            if (Input.GetButtonDown("Jump"))
+            {
+                isWallClinging = false;
+                rb.gravityScale = originalGravity;
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+                canDoubleJump = true; // Duvar zıplaması sonrası havada double jump hakkı ver
+                return; // Bu frame için diğer jump kontrollerini atla
+            }
+
+            // Duvarda kayma ve asılı kalma mekaniği
+            if (wallSlideTimer > 0)
+            {
+                rb.linearVelocity = new Vector2(0f, -wallSlideSpeed);
+                wallSlideTimer -= Time.deltaTime;
+            }
+            else
+            {
+                rb.linearVelocity = Vector2.zero;
+            }
+            rb.gravityScale = 0f;
+
+            // Asılıyken dash atmasını veya normal yürümesini engellemek için geri kalan kontrolleri atla
+            return; 
+        }
+        else
+        {
+            // Duvara tutunmuyorsak yerçekimi normal olmalı
+            rb.gravityScale = originalGravity;
+        }
 
         // Coyote Time ve Double Jump sıfırlaması
         if (isGrounded)
@@ -120,6 +195,7 @@ public class PlayerController : MonoBehaviour
     void FixedUpdate()
     {
         if (isDashing) return; // Dash atıyorsak normal hareketi durdur
+        if (isWallClinging) return; // Duvara tutunurken yatay hareketi (sağ/sol) fiziksel olarak durdur
 
         // Fiziği FixedUpdate'te uygula (daha smooth hareket için)
         rb.linearVelocity = new Vector2(horizontalInput * moveSpeed, rb.linearVelocity.y);
@@ -157,5 +233,14 @@ public class PlayerController : MonoBehaviour
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
         }
+
+        // Duvar kontrolünü göster (varsayılan olarak sağ tarafı gösterelim veya sprite'a göre)
+        SpriteRenderer gizmoSr = GetComponent<SpriteRenderer>();
+        int dir = 1;
+        if (gizmoSr != null && gizmoSr.flipX) dir = -1;
+
+        Vector2 wallCheckPos = (Vector2)transform.position + new Vector2(dir * wallCheckDistance, 0f);
+        Gizmos.color = Color.blue;
+        Gizmos.DrawWireSphere(wallCheckPos, wallCheckRadius);
     }
 }

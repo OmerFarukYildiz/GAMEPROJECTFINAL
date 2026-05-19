@@ -29,7 +29,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 35.53596, y: 0.18721, z: 0}
-  m_LocalScale: {x: 0.5, y: 0.5, z: 1}
+  m_LocalScale: {x: 0.1, y: 0.1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -83,12 +83,12 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
-  m_Color: {r: 0.042452812, g: 1, b: 0.9812475, a: 1}
+  m_Sprite: {fileID: 8942168071872441978, guid: a2ab1ba87af36b5498307d8b5bad209a, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 10.24, y: 10.24}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
@@ -141,8 +141,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 652b7901d516a1b4b95732f61468e9a8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ColorCrystal
+  crystalID: Yesil_Kristal_1
+  itemData: {fileID: 11400000, guid: 99a07612e2ff14847ac46e8a388aa6e6, type: 2}
   crystalColor: {r: 0, g: 1, b: 1, a: 1}
-  bobSpeed: 2
+  bobSpeed: 1
   bobAmount: 0.3
-  rotationSpeed: 90
+  rotationSpeed: 0
   collectEffectPrefab: {fileID: 0}

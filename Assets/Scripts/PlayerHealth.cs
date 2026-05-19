@@ -14,6 +14,28 @@ public class PlayerHealth : MonoBehaviour
     {
         currentHealth = maxHealth;
         sr = GetComponent<SpriteRenderer>();
+
+        // Eğer Bonfire'da doğmamız gerekiyorsa oraya ışınlan
+        if (GameManager.Instance != null && !string.IsNullOrEmpty(GameManager.Instance.lastBonfireScene))
+        {
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == GameManager.Instance.lastBonfireScene)
+            {
+                transform.position = GameManager.Instance.lastBonfirePosition;
+            }
+        }
+    }
+
+    public void HealToFull()
+    {
+        currentHealth = maxHealth;
+        Debug.Log("Can fullendi!");
+    }
+
+    public void Heal(int amount)
+    {
+        currentHealth += amount;
+        currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
+        Debug.Log($"Can yenilendi! Mevcut Can: {currentHealth}");
     }
 
     public void TakeDamage(int damage)
@@ -52,19 +74,22 @@ public class PlayerHealth : MonoBehaviour
 
     void Die()
     {
-        Debug.Log("Oyuncu öldü! Game Over.");
+        Debug.Log("Oyuncu öldü!");
 
-        // Öldüğünde ana menüye dön
         string targetScene = "MainMenu";
 
-        // Eğer SceneTransition (Karartma ekranı) varsa yumuşak bir şekilde menüye dön
+        // Eğer bir Bonfire açıldıysa oraya dön
+        if (GameManager.Instance != null && !string.IsNullOrEmpty(GameManager.Instance.lastBonfireScene))
+        {
+            targetScene = GameManager.Instance.lastBonfireScene;
+        }
+
         if (SceneTransition.Instance != null)
         {
             SceneTransition.Instance.LoadScene(targetScene);
         }
         else
         {
-            // Yoksa anında geç
             UnityEngine.SceneManagement.SceneManager.LoadScene(targetScene);
         }
     }

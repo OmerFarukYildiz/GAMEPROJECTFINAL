@@ -8,6 +8,8 @@ public class BossController : MonoBehaviour
     public BossState currentState = BossState.Idle;
 
     [Header("Referanslar")]
+    public string bossID = "Boss_1"; // GameManager'da kayıtlı kalması için benzersiz kimlik
+    public string crystalToDropID = "Crystal_1"; // Bu boss ölünce yere düşecek olan kristalin ID'si
     public Transform player;
     public GameObject projectilePrefab;   // Mermi prefabı
     public Transform firePoint;           // Merminin çıktığı nokta
@@ -59,6 +61,27 @@ public class BossController : MonoBehaviour
 
     void Start()
     {
+        // Eğer bu boss daha önce öldürüldüyse kendini direkt yok et
+        if (GameManager.Instance != null && GameManager.Instance.IsBossDead(bossID))
+        {
+            if (wallToDestroy != null) wallToDestroy.SetActive(false);
+            if (portalToEnable != null) portalToEnable.SetActive(true);
+            
+            // Eğer kristali almayı unuttuysa, ölüyken bile kristali sahnede bırak!
+            if (colorCrystalPrefab != null)
+            {
+                if (GameManager.Instance != null && !GameManager.Instance.IsCrystalCollected(crystalToDropID))
+                {
+                    GameObject crystal = Instantiate(colorCrystalPrefab, transform.position + Vector3.up, Quaternion.identity);
+                    ColorCrystal crystalComponent = crystal.GetComponent<ColorCrystal>();
+                    if (crystalComponent != null) crystalComponent.crystalID = crystalToDropID;
+                }
+            }
+
+            Destroy(gameObject);
+            return;
+        }
+
         rb = GetComponent<Rigidbody2D>();
         sr = GetComponent<SpriteRenderer>();
         currentHealth = maxHealth;
@@ -340,12 +363,23 @@ public class BossController : MonoBehaviour
         // Kristal bırak
         if (colorCrystalPrefab != null)
         {
-            Instantiate(colorCrystalPrefab, transform.position + Vector3.up, Quaternion.identity);
+            if (GameManager.Instance != null && !GameManager.Instance.IsCrystalCollected(crystalToDropID))
+            {
+                GameObject crystal = Instantiate(colorCrystalPrefab, transform.position + Vector3.up, Quaternion.identity);
+                ColorCrystal crystalComponent = crystal.GetComponent<ColorCrystal>();
+                if (crystalComponent != null) crystalComponent.crystalID = crystalToDropID;
+            }
         }
 
         // Duvarı kaldır ve portalı aç
         if (wallToDestroy != null) wallToDestroy.SetActive(false);
         if (portalToEnable != null) portalToEnable.SetActive(true);
+
+        // GameManager'a ölümünü kalıcı olarak kaydet
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.RegisterDeadBoss(bossID);
+        }
 
         Destroy(gameObject);
     }

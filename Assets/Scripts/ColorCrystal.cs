@@ -2,6 +2,12 @@ using UnityEngine;
 
 public class ColorCrystal : MonoBehaviour
 {
+    [Header("Kayıt Ayarları")]
+    public string crystalID = "Crystal_1"; // GameManager'da kalıcı olarak silinmesi için kimlik
+    
+    [Header("Envanter Verisi")]
+    public ItemData itemData; // Envantere eklenecek veri (ScriptableObject)
+
     [Header("Görsel Ayarlar")]
     public Color crystalColor = Color.cyan;  // Kristalin rengi
     public float bobSpeed = 2f;              // Yukarı-aşağı sallanma hızı
@@ -16,6 +22,13 @@ public class ColorCrystal : MonoBehaviour
 
     void Start()
     {
+        // Daha önce toplandıysa direkt yok ol
+        if (GameManager.Instance != null && GameManager.Instance.IsCrystalCollected(crystalID))
+        {
+            Destroy(gameObject);
+            return;
+        }
+
         startPosition = transform.position;
         sr = GetComponent<SpriteRenderer>();
 
@@ -44,19 +57,40 @@ public class ColorCrystal : MonoBehaviour
 
     void Collect()
     {
-        // Particle efekti oluştur (varsa)
-        if (collectEffectPrefab != null)
+        // Önce envantere eklemeyi dene
+        bool addedToInventory = true;
+        if (itemData != null && InventoryManager.Instance != null)
         {
-            Instantiate(collectEffectPrefab, transform.position, Quaternion.identity);
+            addedToInventory = InventoryManager.Instance.AddItemToStash(itemData);
         }
 
-        // ColorManager'ı bildir
-        if (ColorManager.Instance != null)
+        // Eğer eklendiyse veya ItemData ayarlanmadıysa devam et (Geriye uyumluluk için)
+        if (addedToInventory || itemData == null)
         {
-            ColorManager.Instance.CrystalCollected();
-        }
+            // Particle efekti oluştur (varsa)
+            if (collectEffectPrefab != null)
+            {
+                Instantiate(collectEffectPrefab, transform.position, Quaternion.identity);
+            }
 
-        // Kristali yok et
-        Destroy(gameObject);
+            // ColorManager'ı bildir (Dünya renklensin)
+            if (ColorManager.Instance != null)
+            {
+                ColorManager.Instance.CrystalCollected(crystalID);
+            }
+
+            // Kalıcı olarak toplandığını kaydet
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.RegisterCollectedCrystal(crystalID);
+            }
+
+            // Kristali yok et
+            Destroy(gameObject);
+        }
+        else
+        {
+            Debug.Log("Envanter dolu, Kristal alınamadı!");
+        }
     }
 }
