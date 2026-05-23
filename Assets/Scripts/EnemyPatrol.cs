@@ -15,11 +15,18 @@ public class EnemyPatrol : MonoBehaviour
     {
         sr = GetComponent<SpriteRenderer>();
         rb = GetComponent<Rigidbody2D>();
+        
+        // Eğer noktalar Slime'ın çocuğu olarak eklendiyse, onları Slime'dan ayır (yoksa Slime'la beraber hareket ederler)
+        if (pointA != null) pointA.parent = null;
+        if (pointB != null) pointB.parent = null;
+
         currentTarget = pointB; // Başlangıçta B noktasına git
     }
 
     void FixedUpdate()
     {
+        if (pointA == null || pointB == null) return; // Noktalar atanmamışsa hata verme, sadece bekle
+
         // Hangi yöne gideceğimizi bul (sadece X ekseninde)
         float direction = Mathf.Sign(currentTarget.position.x - transform.position.x);
         
@@ -33,6 +40,6 @@ public class EnemyPatrol : MonoBehaviour
         }
 
         // Yönüne göre sprite'ı çevir
-        sr.flipX = (currentTarget == pointA);
+        if (sr != null) sr.flipX = (currentTarget == pointA);
     }
 }

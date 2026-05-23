@@ -49,7 +49,7 @@ public class PlayerProjectile : MonoBehaviour
 
         if (enemy != null)
         {
-            enemy.TakeDamage(damage);
+            enemy.TakeDamage(damage, transform);
             hitEntity = true;
         }
 
