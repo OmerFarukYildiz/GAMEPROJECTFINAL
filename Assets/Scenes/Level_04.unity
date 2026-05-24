@@ -30403,7 +30403,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1636646150269945636, guid: e6da430de2118564c9cf3e9cf76ed76d, type: 3}
       propertyPath: bossID
-      value: Boss_2
+      value: Boss_4
       objectReference: {fileID: 0}
     - target: {fileID: 1636646150269945636, guid: e6da430de2118564c9cf3e9cf76ed76d, type: 3}
       propertyPath: portalToEnable
@@ -30411,7 +30411,7 @@ PrefabInstance:
       objectReference: {fileID: 5214480}
     - target: {fileID: 1636646150269945636, guid: e6da430de2118564c9cf3e9cf76ed76d, type: 3}
       propertyPath: crystalToDropID
-      value: Crystal_2
+      value: Crystal_4
       objectReference: {fileID: 0}
     - target: {fileID: 4296227403848563909, guid: e6da430de2118564c9cf3e9cf76ed76d, type: 3}
       propertyPath: m_Name
